@@ -1,0 +1,3 @@
+/cmd/user-management-sso/.env
+go.sum
+/vendor
