@@ -28,9 +28,9 @@ func NewHTTPHandler(usecase usecase.UserManagementUsecase) *handler {
 func (h *handler) Mount(group *echo.Group) {
 	group.GET("/users", h.getUserData, userVerify.Verify())
 	group.GET("/user/:id", h.getUserByID, userVerify.Verify())
-	group.POST("/user/add", h.addUser, userVerify.Verify())
-	group.PUT("/user/:id", h.updateUser, userVerify.Verify())
-	group.DELETE("/user/:id", h.deleteUser, userVerify.Verify())
+	group.POST("/add", h.addUser, userVerify.Verify())
+	group.PUT("/update/:id", h.updateUser, userVerify.Verify())
+	group.DELETE("/delete/:id", h.deleteUser, userVerify.Verify())
 }
 
 func (h *handler) getUserData(c echo.Context) error {
