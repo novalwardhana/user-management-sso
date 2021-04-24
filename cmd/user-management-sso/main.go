@@ -33,7 +33,7 @@ func main() {
 	userManagementRepo := userManagementRepo.NewUserManagementRepo(dbMasterRead, dbMasterWrite)
 	userManagementUsecase := userManagementUsecase.NewUserManagementUsecase(userManagementRepo)
 	userManagementHandler := userManagementHandler.NewHTTPHandler(userManagementUsecase)
-	userManagementGroup := r.Group("/user-management")
+	userManagementGroup := r.Group("/api/v1/user-management")
 	userManagementHandler.Mount(userManagementGroup)
 
 	port := fmt.Sprintf(":%s", os.Getenv(constant.ENVPort))

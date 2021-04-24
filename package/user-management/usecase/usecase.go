@@ -12,6 +12,9 @@ type userManagementUsecase struct {
 type UserManagementUsecase interface {
 	GetUserData() <-chan model.Result
 	GetUserByID(int) <-chan model.Result
+	AddUserData(model.NewUser) <-chan model.Result
+	UpdateUserData(int, model.UpdateUser) <-chan model.Result
+	DeleteUserData(int) <-chan model.Result
 }
 
 func NewUserManagementUsecase(repo repository.UserManagementRepo) UserManagementUsecase {
@@ -35,6 +38,36 @@ func (uc *userManagementUsecase) GetUserByID(userID int) <-chan model.Result {
 	go func() {
 		defer close(output)
 		result := <-uc.repo.GetUserByID(userID)
+		output <- result
+	}()
+	return output
+}
+
+func (uc *userManagementUsecase) AddUserData(user model.NewUser) <-chan model.Result {
+	output := make(chan model.Result)
+	go func() {
+		defer close(output)
+		result := <-uc.repo.AddUserData(user)
+		output <- result
+	}()
+	return output
+}
+
+func (uc *userManagementUsecase) UpdateUserData(id int, user model.UpdateUser) <-chan model.Result {
+	output := make(chan model.Result)
+	go func() {
+		defer close(output)
+		result := <-uc.repo.UpdateUserData(id, user)
+		output <- result
+	}()
+	return output
+}
+
+func (uc *userManagementUsecase) DeleteUserData(id int) <-chan model.Result {
+	output := make(chan model.Result)
+	go func() {
+		defer close(output)
+		result := <-uc.repo.DeleteUserData(id)
 		output <- result
 	}()
 	return output
