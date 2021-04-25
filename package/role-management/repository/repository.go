@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"fmt"
+
 	"github.com/jinzhu/gorm"
 	"github.com/novalwardhana/user-management-sso/global/constant"
 	"github.com/novalwardhana/user-management-sso/package/role-management/model"
@@ -99,10 +101,17 @@ func (r *roleManagementRepo) UpdateRoleData(id int, role model.UpdateRole) <-cha
 			"description": role.Description,
 			"updated_at":  role.UpdatedAt,
 		}
-		if err := r.dbMasterWrite.Model(&updateRole).Where("id = ?", id).Update(updateData).Error; err != nil {
-			output <- model.Result{Error: err}
+
+		update := r.dbMasterWrite.Model(&updateRole).Where("id = ?", id).Update(updateData)
+		if update.Error != nil {
+			output <- model.Result{Error: update.Error}
 			return
 		}
+		if update.RowsAffected == 0 {
+			output <- model.Result{Error: fmt.Errorf("Cannot update, role data not found")}
+			return
+		}
+
 		role.UpdatedAtSTr = role.UpdatedAt.Format(constant.DateTimeFormat)
 		output <- model.Result{Data: role}
 	}()
@@ -114,10 +123,17 @@ func (r *roleManagementRepo) DeleteRoleData(id int) <-chan model.Result {
 	go func() {
 		defer close(output)
 		var role model.Role
-		if err := r.dbMasterWrite.Where("id = ?", id).Delete(&role).Error; err != nil {
-			output <- model.Result{Error: err}
+
+		delete := r.dbMasterWrite.Where("id = ?", id).Delete(&role)
+		if delete.Error != nil {
+			output <- model.Result{Error: delete.Error}
 			return
 		}
+		if delete.RowsAffected == 0 {
+			output <- model.Result{Error: fmt.Errorf("Cannot delete, role data not found")}
+			return
+		}
+
 		output <- model.Result{}
 	}()
 	return output

@@ -22,8 +22,8 @@ func NewHTTPHandler(usecase usecase.RoleManagementUsecase) *handler {
 }
 
 func (h *handler) Mount(group *echo.Group) {
-	group.GET("/roles", h.getRoleData, userVerify.Verify())
-	group.GET("/role/:id", h.getRoleByID, userVerify.Verify())
+	group.GET("/list", h.getRoleData, userVerify.Verify())
+	group.GET("/data/:id", h.getRoleByID, userVerify.Verify())
 	group.POST("/add", h.addRoleData, userVerify.Verify())
 	group.PUT("/update/:id", h.updateRoleData, userVerify.Verify())
 	group.DELETE("/delete/:id", h.deleteRoleData, userVerify.Verify())
@@ -56,10 +56,16 @@ func (h *handler) getRoleByID(mc echo.Context) error {
 
 func (h *handler) addRoleData(mc echo.Context) error {
 	c := mc.(*userVerify.RoleContext)
+
 	var newRole model.NewRole
 	if err := c.Bind(&newRole); err != nil {
 		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
 	}
+	if newRole.Code == "" || newRole.Name == "" || newRole.Group == "" || newRole.Description == "" {
+		errMsg := "Code, name, group, and description must be filled"
+		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: errMsg})
+	}
+
 	result := <-h.usecase.AddRoleData(newRole)
 	if result.Error != nil {
 		return c.JSON(http.StatusNotAcceptable, model.Response{StatusCode: http.StatusNotAcceptable, Message: result.Error.Error()})
@@ -70,6 +76,7 @@ func (h *handler) addRoleData(mc echo.Context) error {
 func (h *handler) updateRoleData(mc echo.Context) error {
 
 	c := mc.(*userVerify.RoleContext)
+
 	paramID := c.Param("id")
 	var updateRole model.UpdateRole
 	id, err := strconv.Atoi(paramID)
@@ -78,6 +85,10 @@ func (h *handler) updateRoleData(mc echo.Context) error {
 	}
 	if err := c.Bind(&updateRole); err != nil {
 		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
+	}
+	if updateRole.Code == "" || updateRole.Name == "" || updateRole.Group == "" || updateRole.Description == "" {
+		errMsg := "Code, name, group, and description must be filled"
+		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: errMsg})
 	}
 	updateRole.UpdatedAt = time.Now()
 

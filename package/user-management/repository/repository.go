@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"fmt"
+
 	"github.com/jinzhu/gorm"
 	"github.com/novalwardhana/user-management-sso/global/constant"
 	"github.com/novalwardhana/user-management-sso/package/user-management/model"
@@ -99,10 +101,17 @@ func (r *userManagementRepo) UpdateUserData(id int, user model.UpdateUser) <-cha
 			"is_active":  user.IsActive,
 			"updated_at": user.UpdatedAt,
 		}
-		if err := r.dbMasterWrite.Model(&userTable).Where("id = ?", id).Update(updateData).Error; err != nil {
-			output <- model.Result{Error: err}
+
+		update := r.dbMasterWrite.Model(&userTable).Where("id = ?", id).Update(updateData)
+		if update.Error != nil {
+			output <- model.Result{Error: update.Error}
 			return
 		}
+		if update.RowsAffected == 0 {
+			output <- model.Result{Error: fmt.Errorf("Cannot update, user data not found")}
+			return
+		}
+
 		user.Password = ""
 		user.UpdatedAtStr = user.UpdatedAt.Format(constant.DateTimeFormat)
 		output <- model.Result{Data: user}
@@ -115,10 +124,17 @@ func (r *userManagementRepo) DeleteUserData(id int) <-chan model.Result {
 	go func() {
 		defer close(output)
 		var user model.User
-		if err := r.dbMasterWrite.Where("id = ?", id).Delete(&user).Error; err != nil {
-			output <- model.Result{Error: err}
+
+		delete := r.dbMasterWrite.Where("id = ?", id).Delete(&user)
+		if delete.Error != nil {
+			output <- model.Result{Error: delete.Error}
 			return
 		}
+		if delete.RowsAffected == 0 {
+			output <- model.Result{Error: fmt.Errorf("Cannot delete, user data not found")}
+			return
+		}
+
 		output <- model.Result{}
 	}()
 	return output

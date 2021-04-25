@@ -26,8 +26,8 @@ func NewHTTPHandler(usecase usecase.UserManagementUsecase) *handler {
 }
 
 func (h *handler) Mount(group *echo.Group) {
-	group.GET("/users", h.getUserData, userVerify.Verify())
-	group.GET("/user/:id", h.getUserByID, userVerify.Verify())
+	group.GET("/list", h.getUserData, userVerify.Verify())
+	group.GET("/data/:id", h.getUserByID, userVerify.Verify())
 	group.POST("/add", h.addUser, userVerify.Verify())
 	group.PUT("/update/:id", h.updateUser, userVerify.Verify())
 	group.DELETE("/delete/:id", h.deleteUser, userVerify.Verify())
@@ -36,22 +36,22 @@ func (h *handler) Mount(group *echo.Group) {
 func (h *handler) getUserData(c echo.Context) error {
 	result := <-h.userManagementUC.GetUserData()
 	if result.Error != nil {
-		return c.JSON(http.StatusNotFound, map[string]interface{}{"message": result.Error.Error(), "code": http.StatusNotFound})
+		return c.JSON(http.StatusNotAcceptable, model.Response{StatusCode: http.StatusNotAcceptable, Message: result.Error.Error()})
 	}
-	return c.JSON(http.StatusOK, map[string]interface{}{"message": "success", "code": http.StatusOK, "data": result.Data})
+	return c.JSON(http.StatusOK, model.Response{StatusCode: http.StatusOK, Message: "Success get users data", Data: result.Data})
 }
 
 func (h *handler) getUserByID(c echo.Context) error {
 	paramID := c.Param("id")
 	id, err := strconv.Atoi(paramID)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{"message": "Bad request"})
+		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
 	}
 	result := <-h.userManagementUC.GetUserByID(id)
 	if result.Error != nil {
-		return c.JSON(http.StatusNotFound, map[string]interface{}{"message": "Status not found", "code": http.StatusNotFound})
+		return c.JSON(http.StatusNotAcceptable, model.Response{StatusCode: http.StatusNotAcceptable, Message: result.Error.Error()})
 	}
-	return c.JSON(http.StatusOK, map[string]interface{}{"message": "success", "code": http.StatusOK, "data": result.Data})
+	return c.JSON(http.StatusOK, model.Response{StatusCode: http.StatusOK, Message: "Success get user data", Data: result.Data})
 }
 
 func (h *handler) addUser(mc echo.Context) error {
@@ -61,7 +61,10 @@ func (h *handler) addUser(mc echo.Context) error {
 	if err := c.Bind(&newUser); err != nil {
 		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
 	}
-
+	if newUser.Name == "" || newUser.Username == "" || newUser.Email == "" || newUser.Password == "" {
+		errMsg := "Name, username, email, and password must be filled"
+		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: errMsg})
+	}
 	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), constant.PasswordHashCost)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
@@ -90,6 +93,10 @@ func (h *handler) updateUser(mc echo.Context) error {
 	updateUser := model.UpdateUser{}
 	if err := c.Bind(&updateUser); err != nil {
 		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
+	}
+	if updateUser.Name == "" || updateUser.Username == "" || updateUser.Email == "" || updateUser.Password == "" {
+		errMsg := "Name, username, email, and password must be filled"
+		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: errMsg})
 	}
 
 	encryptedPassword := fmt.Sprintf("%x", md5.Sum([]byte(updateUser.Password)))

@@ -18,6 +18,10 @@ import (
 	roleManagementHandler "github.com/novalwardhana/user-management-sso/package/role-management/handler"
 	roleManagementRepo "github.com/novalwardhana/user-management-sso/package/role-management/repository"
 	roleManagementUsecase "github.com/novalwardhana/user-management-sso/package/role-management/usecase"
+
+	permissionManagementHandler "github.com/novalwardhana/user-management-sso/package/permission-management/handler"
+	permissionManagementRepo "github.com/novalwardhana/user-management-sso/package/permission-management/repository"
+	permissionManagementUsecase "github.com/novalwardhana/user-management-sso/package/permission-management/usecase"
 )
 
 var (
@@ -47,6 +51,13 @@ func main() {
 	roleManagementHandler := roleManagementHandler.NewHTTPHandler(roleManagementUsecase)
 	roleManagementGroup := r.Group("/api/v1/role-management")
 	roleManagementHandler.Mount(roleManagementGroup)
+
+	/* Permission management */
+	permissionManagementRepo := permissionManagementRepo.NewPermissionManagementRepo(dbMasterRead, dbMasterWrite)
+	permissionManagementUsecase := permissionManagementUsecase.NewPermissionManagementUsecase(permissionManagementRepo)
+	permissionManagementHandler := permissionManagementHandler.NewHTTPHandler(permissionManagementUsecase)
+	permissionManagementGroup := r.Group("/api/v1/permission-management")
+	permissionManagementHandler.Mount(permissionManagementGroup)
 
 	port := fmt.Sprintf(":%s", os.Getenv(constant.ENVPort))
 	r.Start(port)
