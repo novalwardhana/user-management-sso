@@ -6,6 +6,7 @@ import (
 	"github.com/jinzhu/gorm"
 	"github.com/novalwardhana/user-management-sso/global/constant"
 	"github.com/novalwardhana/user-management-sso/package/role-management/model"
+	log "github.com/sirupsen/logrus"
 )
 
 type roleManagementRepo struct {
@@ -17,8 +18,10 @@ type RoleManagementRepo interface {
 	GetRoleData() <-chan model.Result
 	GetRoleByID(int) <-chan model.Result
 	AddRoleData(model.NewRole) <-chan model.Result
+	AddRolePermissionData([]model.RoleHasPermission) <-chan model.Result
 	UpdateRoleData(int, model.UpdateRole) <-chan model.Result
 	DeleteRoleData(int) <-chan model.Result
+	DeleteRolePermissionData(int) <-chan model.Result
 }
 
 func NewRoleManagementRepo(dbMasterRead, dbMasterWrite *gorm.DB) RoleManagementRepo {
@@ -78,13 +81,33 @@ func (r *roleManagementRepo) AddRoleData(user model.NewRole) <-chan model.Result
 	output := make(chan model.Result)
 	go func() {
 		defer close(output)
-		if err := r.dbMasterWrite.Create(&user).Error; err != nil {
-			output <- model.Result{Error: err}
+
+		create := r.dbMasterWrite.Create(&user)
+		if create.Error != nil {
+			output <- model.Result{Error: create.Error}
 			return
 		}
+
 		user.CreatedAtStr = user.CreatedAt.Format(constant.DateTimeFormat)
 		user.UpdatedAtStr = user.UpdatedAt.Format(constant.DateTimeFormat)
 		output <- model.Result{Data: user}
+	}()
+	return output
+}
+
+func (r *roleManagementRepo) AddRolePermissionData(rolePermissions []model.RoleHasPermission) <-chan model.Result {
+	output := make(chan model.Result)
+	go func() {
+		defer close(output)
+
+		for _, rolePermission := range rolePermissions {
+			create := r.dbMasterWrite.Create(&rolePermission)
+			if create.Error != nil {
+				log.Error(fmt.Sprintf("An error occured when insert role permission: %s\n", create.Error.Error()))
+			}
+		}
+
+		output <- model.Result{}
 	}()
 	return output
 }
@@ -131,6 +154,23 @@ func (r *roleManagementRepo) DeleteRoleData(id int) <-chan model.Result {
 		}
 		if delete.RowsAffected == 0 {
 			output <- model.Result{Error: fmt.Errorf("Cannot delete, role data not found")}
+			return
+		}
+
+		output <- model.Result{}
+	}()
+	return output
+}
+
+func (r *roleManagementRepo) DeleteRolePermissionData(roleID int) <-chan model.Result {
+	output := make(chan model.Result)
+	go func() {
+		defer close(output)
+
+		var rolePermission model.RoleHasPermission
+		delete := r.dbMasterWrite.Where("role_id = ?", roleID).Delete(&rolePermission)
+		if delete.Error != nil {
+			output <- model.Result{Error: delete.Error}
 			return
 		}
 

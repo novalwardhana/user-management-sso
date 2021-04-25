@@ -57,16 +57,16 @@ func (h *handler) getRoleByID(mc echo.Context) error {
 func (h *handler) addRoleData(mc echo.Context) error {
 	c := mc.(*userVerify.RoleContext)
 
-	var newRole model.NewRole
-	if err := c.Bind(&newRole); err != nil {
+	var param model.NewRoleParam
+	if err := c.Bind(&param); err != nil {
 		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
 	}
-	if newRole.Code == "" || newRole.Name == "" || newRole.Group == "" || newRole.Description == "" {
+	if param.Code == "" || param.Name == "" || param.Group == "" || param.Description == "" {
 		errMsg := "Code, name, group, and description must be filled"
 		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: errMsg})
 	}
 
-	result := <-h.usecase.AddRoleData(newRole)
+	result := <-h.usecase.AddRoleData(param)
 	if result.Error != nil {
 		return c.JSON(http.StatusNotAcceptable, model.Response{StatusCode: http.StatusNotAcceptable, Message: result.Error.Error()})
 	}
@@ -78,21 +78,21 @@ func (h *handler) updateRoleData(mc echo.Context) error {
 	c := mc.(*userVerify.RoleContext)
 
 	paramID := c.Param("id")
-	var updateRole model.UpdateRole
+	var param model.UpdateRoleParam
 	id, err := strconv.Atoi(paramID)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
 	}
-	if err := c.Bind(&updateRole); err != nil {
+	if err := c.Bind(&param); err != nil {
 		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
 	}
-	if updateRole.Code == "" || updateRole.Name == "" || updateRole.Group == "" || updateRole.Description == "" {
+	if param.Code == "" || param.Name == "" || param.Group == "" || param.Description == "" {
 		errMsg := "Code, name, group, and description must be filled"
 		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: errMsg})
 	}
-	updateRole.UpdatedAt = time.Now()
+	param.UpdatedAt = time.Now()
 
-	result := <-h.usecase.UpdateRoleData(id, updateRole)
+	result := <-h.usecase.UpdateRoleData(id, param)
 	if result.Error != nil {
 		return c.JSON(http.StatusNotAcceptable, model.Response{StatusCode: http.StatusNotAcceptable, Message: result.Error.Error()})
 	}
