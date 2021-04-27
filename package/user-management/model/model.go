@@ -21,7 +21,13 @@ type User struct {
 	IsActive bool   `json:"is_active" gorm:"column:is_active"`
 }
 
+type NewUserParam struct {
+	NewUser
+	RoleIDs []int `json:"role_ids" gorm:"-"`
+}
+
 type NewUser struct {
+	ID           int       `json:"id" gorm:"primaryKey"`
 	Name         string    `json:"name" gorm:"column:name"`
 	Username     string    `json:"username" gorm:"column:username"`
 	Email        string    `json:"email" gorm:"column:email"`
@@ -33,7 +39,20 @@ type NewUser struct {
 	UpdatedAtStr string    `json:"updated_at" gorm:"-"`
 }
 
+type UserHasRole struct {
+	UserID    int       `json:"user_id" gorm:"column:user_id"`
+	RoleID    int       `json:"role_id" gorm:"column:role_id"`
+	CreatedAt time.Time `json:"created_at" gorm:"column:created_at"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"column:updated_at"`
+}
+
+type UpdateUserParam struct {
+	UpdateUser
+	RoleIDs []int `json:"role_ids" gorm:"-"`
+}
+
 type UpdateUser struct {
+	ID           int       `json:"id" gorm:"-"`
 	Name         string    `json:"name" gorm:"column:name"`
 	Username     string    `json:"username" gorm:"column:username"`
 	Email        string    `json:"email" gorm:"column:email"`
@@ -53,4 +72,8 @@ func (NewUser) TableName() string {
 
 func (UpdateUser) TableName() string {
 	return "public.users"
+}
+
+func (UserHasRole) TableName() string {
+	return "public.user_has_roles"
 }

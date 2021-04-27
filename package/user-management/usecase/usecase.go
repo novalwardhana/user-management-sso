@@ -1,6 +1,8 @@
 package usecase
 
 import (
+	"time"
+
 	"github.com/novalwardhana/user-management-sso/package/user-management/model"
 	"github.com/novalwardhana/user-management-sso/package/user-management/repository"
 )
@@ -12,8 +14,8 @@ type userManagementUsecase struct {
 type UserManagementUsecase interface {
 	GetUserData() <-chan model.Result
 	GetUserByID(int) <-chan model.Result
-	AddUserData(model.NewUser) <-chan model.Result
-	UpdateUserData(int, model.UpdateUser) <-chan model.Result
+	AddUserData(model.NewUserParam) <-chan model.Result
+	UpdateUserData(int, model.UpdateUserParam) <-chan model.Result
 	DeleteUserData(int) <-chan model.Result
 }
 
@@ -43,22 +45,77 @@ func (uc *userManagementUsecase) GetUserByID(userID int) <-chan model.Result {
 	return output
 }
 
-func (uc *userManagementUsecase) AddUserData(user model.NewUser) <-chan model.Result {
+func (uc *userManagementUsecase) AddUserData(param model.NewUserParam) <-chan model.Result {
 	output := make(chan model.Result)
 	go func() {
 		defer close(output)
-		result := <-uc.repo.AddUserData(user)
-		output <- result
+
+		resultUser := <-uc.repo.AddUserData(param.NewUser)
+		if resultUser.Error != nil {
+			output <- model.Result{Error: resultUser.Error}
+			return
+		}
+
+		var userHasRoles []model.UserHasRole
+		user := resultUser.Data.(model.NewUser)
+		for _, roleID := range param.RoleIDs {
+			userHasRole := model.UserHasRole{
+				UserID:    user.ID,
+				RoleID:    roleID,
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
+			userHasRoles = append(userHasRoles, userHasRole)
+		}
+
+		resultUserRole := <-uc.repo.AddUserHasRole(userHasRoles)
+		if resultUserRole.Error != nil {
+			output <- model.Result{Error: resultUserRole.Error}
+			return
+		}
+
+		output <- model.Result{
+			Data: user,
+		}
 	}()
 	return output
 }
 
-func (uc *userManagementUsecase) UpdateUserData(id int, user model.UpdateUser) <-chan model.Result {
+func (uc *userManagementUsecase) UpdateUserData(id int, param model.UpdateUserParam) <-chan model.Result {
 	output := make(chan model.Result)
 	go func() {
 		defer close(output)
-		result := <-uc.repo.UpdateUserData(id, user)
-		output <- result
+
+		resultUser := <-uc.repo.UpdateUserData(id, param.UpdateUser)
+		if resultUser.Error != nil {
+			output <- model.Result{Error: resultUser.Error}
+			return
+		}
+
+		resultDeleteRole := <-uc.repo.DeleteUserRoleData(id)
+		if resultDeleteRole.Error != nil {
+			output <- model.Result{Error: resultDeleteRole.Error}
+			return
+		}
+
+		var userHasRoles []model.UserHasRole
+		for _, roleID := range param.RoleIDs {
+			userHasRole := model.UserHasRole{
+				UserID:    id,
+				RoleID:    roleID,
+				CreatedAt: time.Now(),
+				UpdatedAt: time.Now(),
+			}
+			userHasRoles = append(userHasRoles, userHasRole)
+		}
+
+		resultUserRole := <-uc.repo.AddUserHasRole(userHasRoles)
+		if resultUserRole.Error != nil {
+			output <- model.Result{Error: resultUserRole.Error}
+			return
+		}
+
+		output <- resultUser
 	}()
 	return output
 }
@@ -67,8 +124,15 @@ func (uc *userManagementUsecase) DeleteUserData(id int) <-chan model.Result {
 	output := make(chan model.Result)
 	go func() {
 		defer close(output)
-		result := <-uc.repo.DeleteUserData(id)
-		output <- result
+
+		resultRole := <-uc.repo.DeleteUserRoleData(id)
+		if resultRole.Error != nil {
+			output <- model.Result{Error: resultRole.Error}
+			return
+		}
+
+		resultUser := <-uc.repo.DeleteUserData(id)
+		output <- resultUser
 	}()
 	return output
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/novalwardhana/user-management-sso/config/postgres"
 	"github.com/novalwardhana/user-management-sso/global/constant"
 	"github.com/novalwardhana/user-management-sso/package/user-management/model"
+	log "github.com/sirupsen/logrus"
 )
 
 type userManagementRepo struct {
@@ -16,8 +17,10 @@ type UserManagementRepo interface {
 	GetUserData() <-chan model.Result
 	GetUserByID(int) <-chan model.Result
 	AddUserData(model.NewUser) <-chan model.Result
+	AddUserHasRole([]model.UserHasRole) <-chan model.Result
 	UpdateUserData(int, model.UpdateUser) <-chan model.Result
 	DeleteUserData(int) <-chan model.Result
+	DeleteUserRoleData(int) <-chan model.Result
 }
 
 func NewUserManagementRepo(dbMaster *postgres.DBConnection) UserManagementRepo {
@@ -80,9 +83,27 @@ func (r *userManagementRepo) AddUserData(user model.NewUser) <-chan model.Result
 			output <- model.Result{Error: err}
 			return
 		}
+		user.Password = ""
 		user.CreatedAtSTr = user.CreatedAt.Format(constant.DateTimeFormat)
 		user.UpdatedAtStr = user.UpdatedAt.Format(constant.DateTimeFormat)
 		output <- model.Result{Data: user}
+	}()
+	return output
+}
+
+func (r *userManagementRepo) AddUserHasRole(userHasRoles []model.UserHasRole) <-chan model.Result {
+	output := make(chan model.Result)
+	go func() {
+		defer close(output)
+
+		for _, userHasRole := range userHasRoles {
+			create := r.dbMaster.Write.Create(&userHasRole)
+			if create.Error != nil {
+				log.Error(fmt.Sprintf("An error occured when insert user role: %s\n", create.Error.Error()))
+			}
+		}
+
+		output <- model.Result{}
 	}()
 	return output
 }
@@ -110,6 +131,7 @@ func (r *userManagementRepo) UpdateUserData(id int, user model.UpdateUser) <-cha
 			return
 		}
 
+		user.ID = id
 		user.Password = ""
 		user.UpdatedAtStr = user.UpdatedAt.Format(constant.DateTimeFormat)
 		output <- model.Result{Data: user}
@@ -130,6 +152,23 @@ func (r *userManagementRepo) DeleteUserData(id int) <-chan model.Result {
 		}
 		if delete.RowsAffected == 0 {
 			output <- model.Result{Error: fmt.Errorf("Cannot delete, user data not found")}
+			return
+		}
+
+		output <- model.Result{}
+	}()
+	return output
+}
+
+func (r *userManagementRepo) DeleteUserRoleData(userID int) <-chan model.Result {
+	output := make(chan model.Result)
+	go func() {
+		defer close(output)
+
+		var userRole model.UserHasRole
+		delete := r.dbMaster.Write.Where("user_id = ?", userID).Delete(&userRole)
+		if delete.Error != nil {
+			output <- model.Result{Error: delete.Error}
 			return
 		}
 

@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"crypto/md5"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -57,25 +55,25 @@ func (h *handler) getUserByID(c echo.Context) error {
 func (h *handler) addUser(mc echo.Context) error {
 	c := mc.(*userVerify.RoleContext)
 
-	newUser := model.NewUser{}
-	if err := c.Bind(&newUser); err != nil {
+	var param model.NewUserParam
+	if err := c.Bind(&param); err != nil {
 		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
 	}
-	if newUser.Name == "" || newUser.Username == "" || newUser.Email == "" || newUser.Password == "" {
+	if param.Name == "" || param.Username == "" || param.Email == "" || param.Password == "" {
 		errMsg := "Name, username, email, and password must be filled"
 		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: errMsg})
 	}
-	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), constant.PasswordHashCost)
+	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(param.Password), constant.PasswordHashCost)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
 	}
 
-	newUser.Password = string(encryptedPassword)
-	newUser.IsActive = true
-	newUser.CreatedAt = time.Now()
-	newUser.UpdatedAt = time.Now()
+	param.Password = string(encryptedPassword)
+	param.IsActive = true
+	param.CreatedAt = time.Now()
+	param.UpdatedAt = time.Now()
 
-	result := <-h.userManagementUC.AddUserData(newUser)
+	result := <-h.userManagementUC.AddUserData(param)
 	if result.Error != nil {
 		return c.JSON(http.StatusNotAcceptable, model.Response{StatusCode: http.StatusNotAcceptable, Message: result.Error.Error()})
 	}
@@ -90,20 +88,23 @@ func (h *handler) updateUser(mc echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
 	}
-	updateUser := model.UpdateUser{}
-	if err := c.Bind(&updateUser); err != nil {
+	var param model.UpdateUserParam
+	if err := c.Bind(&param); err != nil {
 		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
 	}
-	if updateUser.Name == "" || updateUser.Username == "" || updateUser.Email == "" || updateUser.Password == "" {
-		errMsg := "Name, username, email, and password must be filled"
+	if param.Name == "" || param.Username == "" || param.Email == "" || param.Password == "" || len(param.RoleIDs) == 0 {
+		errMsg := "Name, username, email, password, and role must be filled"
 		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: errMsg})
 	}
 
-	encryptedPassword := fmt.Sprintf("%x", md5.Sum([]byte(updateUser.Password)))
-	updateUser.Password = encryptedPassword
-	updateUser.UpdatedAt = time.Now()
+	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(param.Password), constant.PasswordHashCost)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
+	}
+	param.Password = string(encryptedPassword)
+	param.UpdatedAt = time.Now()
 
-	result := <-h.userManagementUC.UpdateUserData(id, updateUser)
+	result := <-h.userManagementUC.UpdateUserData(id, param)
 	if result.Error != nil {
 		return c.JSON(http.StatusNotAcceptable, model.Response{StatusCode: http.StatusNotAcceptable, Message: result.Error.Error()})
 	}
