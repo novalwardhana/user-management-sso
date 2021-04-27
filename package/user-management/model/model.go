@@ -13,6 +13,16 @@ type Response struct {
 	Data       interface{} `json:"data"`
 }
 
+type ListUser struct {
+	ID         int                      `json:"id" gorm:"column:id"`
+	Name       string                   `json:"name" gorm:"column:name"`
+	Username   string                   `json:"username" gorm:"column:username"`
+	Email      string                   `json:"email" gorm:"column:email"`
+	IsActive   bool                     `json:"is_active" gorm:"column:is_active"`
+	Roles      string                   `json:"-" gorm:"column:roles"`
+	RoleArrays []map[string]interface{} `json:"roles" gorm:"-"`
+}
+
 type User struct {
 	ID       int    `json:"id" gorm:"column:id"`
 	Name     string `json:"name" gorm:"column:name"`
@@ -60,6 +70,10 @@ type UpdateUser struct {
 	IsActive     bool      `json:"is_active" gorm:"column:is_active"`
 	UpdatedAt    time.Time `json:"-" gorm:"column:updated_at"`
 	UpdatedAtStr string    `json:"updated_at" gorm:"-"`
+}
+
+func (ListUser) TableName() string {
+	return "public.users"
 }
 
 func (User) TableName() string {

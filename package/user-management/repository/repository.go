@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/novalwardhana/user-management-sso/config/postgres"
@@ -33,29 +34,46 @@ func (r *userManagementRepo) GetUserData() <-chan model.Result {
 	output := make(chan model.Result)
 	go func() {
 		defer close(output)
-		var users []model.User
-		sql := "SELECT id, name, username, email, is_active FROM users"
+
+		var listUsers []model.ListUser
+		sql := `select 
+					u.id,
+					u.name,
+					u.username,
+					u.email,
+					u.is_active,
+					concat('[', string_agg('{"id":' || r.id ||','|| '"code":"' || r.code ||'","name":"' || r.name || '","group":"' || r."group" || '","description":"' || r.description ||'"}', ','), ']') as roles
+				from users u
+				left join user_has_roles uhr on u.id = uhr.user_id
+				left join roles r on uhr.role_id = r.id
+				group by u.id
+				order by u.id desc`
+
 		rows, err := r.dbMaster.Read.Raw(sql).Rows()
 		if err != nil {
 			output <- model.Result{Error: err}
 			return
 		}
 		for rows.Next() {
-			user := model.User{}
+			listUser := model.ListUser{}
 			err := rows.Scan(
-				&user.ID,
-				&user.Name,
-				&user.Username,
-				&user.Email,
-				&user.IsActive,
+				&listUser.ID,
+				&listUser.Name,
+				&listUser.Username,
+				&listUser.Email,
+				&listUser.IsActive,
+				&listUser.Roles,
 			)
 			if err != nil {
 				output <- model.Result{Error: err}
 				return
 			}
-			users = append(users, user)
+			roles := []map[string]interface{}{}
+			_ = json.Unmarshal([]byte(listUser.Roles), &roles)
+			listUser.RoleArrays = roles
+			listUsers = append(listUsers, listUser)
 		}
-		output <- model.Result{Data: users}
+		output <- model.Result{Data: listUsers}
 	}()
 	return output
 }
@@ -64,13 +82,31 @@ func (r *userManagementRepo) GetUserByID(id int) <-chan model.Result {
 	output := make(chan model.Result)
 	go func() {
 		defer close(output)
-		var user model.User
-		sql := "SELECT id, name, username, email, is_active from users where id = ?"
-		if err := r.dbMaster.Read.Raw(sql, id).First(&user).Error; err != nil {
+		var listUser model.ListUser
+		sql := `select 
+				u.id,
+				u.name,
+				u.username,
+				u.email,
+				u.is_active,
+				concat('[', string_agg('{"id":' || r.id ||','|| '"code":"' || r.code ||'","name":"' || r.name || '","group":"' || r."group" || '","description":"' || r.description ||'"}', ','), ']') as roles
+			from users u
+			left join user_has_roles uhr on u.id = uhr.user_id
+			left join roles r on uhr.role_id = r.id
+			where u.id = ?
+			group by u.id order by u.id desc limit 1`
+		if err := r.dbMaster.Read.Raw(sql, id).Scan(&listUser).Error; err != nil {
 			output <- model.Result{Error: err}
 			return
 		}
-		output <- model.Result{Data: user}
+
+		roles := []map[string]interface{}{}
+		if err := json.Unmarshal([]byte(listUser.Roles), &roles); err != nil {
+			output <- model.Result{Error: err}
+			return
+		}
+		listUser.RoleArrays = roles
+		output <- model.Result{Data: listUser}
 	}()
 	return output
 }
