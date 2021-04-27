@@ -3,14 +3,13 @@ package repository
 import (
 	"fmt"
 
-	"github.com/jinzhu/gorm"
+	"github.com/novalwardhana/user-management-sso/config/postgres"
 	"github.com/novalwardhana/user-management-sso/global/constant"
 	"github.com/novalwardhana/user-management-sso/package/permission-management/model"
 )
 
 type permissionManagementRepo struct {
-	dbMasterRead  *gorm.DB
-	dbMasterWrite *gorm.DB
+	dbMaster *postgres.DBConnection
 }
 
 type PermissionManagementRepo interface {
@@ -21,10 +20,9 @@ type PermissionManagementRepo interface {
 	DeletePermissionData(int) <-chan model.Result
 }
 
-func NewPermissionManagementRepo(dbMasterRead, dbMasterWrite *gorm.DB) PermissionManagementRepo {
+func NewPermissionManagementRepo(dbMaster *postgres.DBConnection) PermissionManagementRepo {
 	return &permissionManagementRepo{
-		dbMasterRead:  dbMasterRead,
-		dbMasterWrite: dbMasterWrite,
+		dbMaster: dbMaster,
 	}
 }
 
@@ -33,8 +31,8 @@ func (r *permissionManagementRepo) GetPermissionData() <-chan model.Result {
 	go func() {
 		defer close(output)
 		var permissions []model.Permission
-		sql := `SELECT id, code, name, description FROM permissions`
-		rows, err := r.dbMasterRead.Raw(sql).Rows()
+		sql := `SELECT id, code, name, description FROM permissions order by id desc`
+		rows, err := r.dbMaster.Read.Raw(sql).Rows()
 		if err != nil {
 			output <- model.Result{Error: err}
 			return
@@ -64,7 +62,7 @@ func (r *permissionManagementRepo) GetPermissionByID(id int) <-chan model.Result
 		defer close(output)
 		var permission model.Permission
 		sql := `SELECT id, code, name, description FROM permissions WHERE id = ?`
-		if err := r.dbMasterRead.Raw(sql, id).First(&permission).Error; err != nil {
+		if err := r.dbMaster.Read.Raw(sql, id).First(&permission).Error; err != nil {
 			output <- model.Result{Error: err}
 			return
 		}
@@ -77,7 +75,7 @@ func (r *permissionManagementRepo) AddPermissionData(permission model.NewPermiss
 	output := make(chan model.Result)
 	go func() {
 		defer close(output)
-		if err := r.dbMasterRead.Create(&permission).Error; err != nil {
+		if err := r.dbMaster.Read.Create(&permission).Error; err != nil {
 			output <- model.Result{Error: err}
 			return
 		}
@@ -101,7 +99,7 @@ func (r *permissionManagementRepo) UpdatePermissionData(id int, permission model
 			"updated_at":  permission.UpdatedAt,
 		}
 
-		update := r.dbMasterWrite.Model(&permissionTable).Where("id = ?", id).Update(updateData)
+		update := r.dbMaster.Write.Model(&permissionTable).Where("id = ?", id).Update(updateData)
 		if update.Error != nil {
 			output <- model.Result{Error: update.Error}
 			return
@@ -110,6 +108,7 @@ func (r *permissionManagementRepo) UpdatePermissionData(id int, permission model
 			output <- model.Result{Error: fmt.Errorf("Cannot update, permission data not found")}
 			return
 		}
+		permission.ID = id
 		permission.UpdatedAtStr = permission.UpdatedAt.Format(constant.DateTimeFormat)
 		output <- model.Result{Data: permission}
 	}()
@@ -122,7 +121,7 @@ func (r *permissionManagementRepo) DeletePermissionData(id int) <-chan model.Res
 		defer close(output)
 		var permission model.Permission
 
-		delete := r.dbMasterWrite.Where("id = ?", id).Delete(&permission)
+		delete := r.dbMaster.Write.Where("id = ?", id).Delete(&permission)
 		if delete.Error != nil {
 			output <- model.Result{Error: delete.Error}
 			return

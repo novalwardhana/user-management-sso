@@ -3,14 +3,13 @@ package repository
 import (
 	"fmt"
 
-	"github.com/jinzhu/gorm"
+	"github.com/novalwardhana/user-management-sso/config/postgres"
 	"github.com/novalwardhana/user-management-sso/global/constant"
 	"github.com/novalwardhana/user-management-sso/package/user-management/model"
 )
 
 type userManagementRepo struct {
-	dbMasterRead  *gorm.DB
-	dbMasterWrite *gorm.DB
+	dbMaster *postgres.DBConnection
 }
 
 type UserManagementRepo interface {
@@ -21,10 +20,9 @@ type UserManagementRepo interface {
 	DeleteUserData(int) <-chan model.Result
 }
 
-func NewUserManagementRepo(dbMasterRead, dbMasterWrite *gorm.DB) UserManagementRepo {
+func NewUserManagementRepo(dbMaster *postgres.DBConnection) UserManagementRepo {
 	return &userManagementRepo{
-		dbMasterRead:  dbMasterRead,
-		dbMasterWrite: dbMasterWrite,
+		dbMaster: dbMaster,
 	}
 }
 
@@ -34,7 +32,7 @@ func (r *userManagementRepo) GetUserData() <-chan model.Result {
 		defer close(output)
 		var users []model.User
 		sql := "SELECT id, name, username, email, is_active FROM users"
-		rows, err := r.dbMasterRead.Raw(sql).Rows()
+		rows, err := r.dbMaster.Read.Raw(sql).Rows()
 		if err != nil {
 			output <- model.Result{Error: err}
 			return
@@ -65,7 +63,7 @@ func (r *userManagementRepo) GetUserByID(id int) <-chan model.Result {
 		defer close(output)
 		var user model.User
 		sql := "SELECT id, name, username, email, is_active from users where id = ?"
-		if err := r.dbMasterRead.Raw(sql, id).First(&user).Error; err != nil {
+		if err := r.dbMaster.Read.Raw(sql, id).First(&user).Error; err != nil {
 			output <- model.Result{Error: err}
 			return
 		}
@@ -78,7 +76,7 @@ func (r *userManagementRepo) AddUserData(user model.NewUser) <-chan model.Result
 	output := make(chan model.Result)
 	go func() {
 		defer close(output)
-		if err := r.dbMasterWrite.Create(&user).Error; err != nil {
+		if err := r.dbMaster.Write.Create(&user).Error; err != nil {
 			output <- model.Result{Error: err}
 			return
 		}
@@ -102,7 +100,7 @@ func (r *userManagementRepo) UpdateUserData(id int, user model.UpdateUser) <-cha
 			"updated_at": user.UpdatedAt,
 		}
 
-		update := r.dbMasterWrite.Model(&userTable).Where("id = ?", id).Update(updateData)
+		update := r.dbMaster.Write.Model(&userTable).Where("id = ?", id).Update(updateData)
 		if update.Error != nil {
 			output <- model.Result{Error: update.Error}
 			return
@@ -125,7 +123,7 @@ func (r *userManagementRepo) DeleteUserData(id int) <-chan model.Result {
 		defer close(output)
 		var user model.User
 
-		delete := r.dbMasterWrite.Where("id = ?", id).Delete(&user)
+		delete := r.dbMaster.Write.Where("id = ?", id).Delete(&user)
 		if delete.Error != nil {
 			output <- model.Result{Error: delete.Error}
 			return

@@ -21,6 +21,7 @@ type Permission struct {
 }
 
 type NewPermission struct {
+	ID           int       `json:"id" gorm:"primaryKey"`
 	Code         string    `json:"code" gorm:"column:code"`
 	Name         string    `json:"name" gorm:"column:name"`
 	Description  string    `json:"description" gorm:"column:description"`
@@ -31,6 +32,7 @@ type NewPermission struct {
 }
 
 type UpdatePermission struct {
+	ID           int       `json:"id" gorm:"-"`
 	Code         string    `json:"code" gorm:"column:code"`
 	Name         string    `json:"name" gorm:"column:name"`
 	Description  string    `json:"description" gorm:"column:description"`

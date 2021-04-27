@@ -13,6 +13,11 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
 
+type DBConnection struct {
+	Read  *gorm.DB
+	Write *gorm.DB
+}
+
 func DBMasterRead() *gorm.DB {
 	db := CreateConnection(os.Getenv(constant.ENVDBMaster))
 	return db

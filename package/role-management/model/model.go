@@ -13,6 +13,16 @@ type Response struct {
 	Data       interface{} `json:"data"`
 }
 
+type ListRole struct {
+	ID               int                      `json:"id" gorm:"column:id"`
+	Code             string                   `json:"code" gorm:"column:code"`
+	Name             string                   `json:"name" gorm:"column:name"`
+	Group            string                   `json:"group" gorm:"column:group"`
+	Description      string                   `json:"description" gorm:"column:description"`
+	Permissions      string                   `json:"-" gorm:"column:permissions"`
+	PermissionArrays []map[string]interface{} `json:"permissions" gorm:"-"`
+}
+
 type Role struct {
 	ID          int    `json:"id" gorm:"column:id"`
 	Code        string `json:"code" gorm:"column:code"`
@@ -57,6 +67,10 @@ type UpdateRole struct {
 	Description  string    `json:"description" gorm:"column:description"`
 	UpdatedAt    time.Time `json:"-" gorm:"column:updated_at"`
 	UpdatedAtSTr string    `json:"updated_at" gorm:"-"`
+}
+
+func (ListRole) TableName() string {
+	return "public.roles"
 }
 
 func (NewRole) TableName() string {

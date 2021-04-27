@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jinzhu/gorm"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo"
 	constant "github.com/novalwardhana/user-management-sso/global/constant"
@@ -24,10 +23,7 @@ import (
 	permissionManagementUsecase "github.com/novalwardhana/user-management-sso/package/permission-management/usecase"
 )
 
-var (
-	dbMasterRead  *gorm.DB
-	dbMasterWrite *gorm.DB
-)
+var dbMaster *postgres.DBConnection
 
 func main() {
 	r := echo.New()
@@ -35,25 +31,27 @@ func main() {
 		log.Error(fmt.Sprintf("An error occured: %s", err.Error()))
 	}
 
-	dbMasterRead = postgres.DBMasterRead()
-	dbMasterWrite = postgres.DBMasterWrite()
+	dbMaster = &postgres.DBConnection{
+		Read:  postgres.DBMasterRead(),
+		Write: postgres.DBMasterWrite(),
+	}
 
 	/* User management */
-	userManagementRepo := userManagementRepo.NewUserManagementRepo(dbMasterRead, dbMasterWrite)
+	userManagementRepo := userManagementRepo.NewUserManagementRepo(dbMaster)
 	userManagementUsecase := userManagementUsecase.NewUserManagementUsecase(userManagementRepo)
 	userManagementHandler := userManagementHandler.NewHTTPHandler(userManagementUsecase)
 	userManagementGroup := r.Group("/api/v1/user-management")
 	userManagementHandler.Mount(userManagementGroup)
 
 	/* Role management */
-	roleManagementRepo := roleManagementRepo.NewRoleManagementRepo(dbMasterRead, dbMasterWrite)
+	roleManagementRepo := roleManagementRepo.NewRoleManagementRepo(dbMaster)
 	roleManagementUsecase := roleManagementUsecase.NewRoleManagementUsecase(roleManagementRepo)
 	roleManagementHandler := roleManagementHandler.NewHTTPHandler(roleManagementUsecase)
 	roleManagementGroup := r.Group("/api/v1/role-management")
 	roleManagementHandler.Mount(roleManagementGroup)
 
 	/* Permission management */
-	permissionManagementRepo := permissionManagementRepo.NewPermissionManagementRepo(dbMasterRead, dbMasterWrite)
+	permissionManagementRepo := permissionManagementRepo.NewPermissionManagementRepo(dbMaster)
 	permissionManagementUsecase := permissionManagementUsecase.NewPermissionManagementUsecase(permissionManagementRepo)
 	permissionManagementHandler := permissionManagementHandler.NewHTTPHandler(permissionManagementUsecase)
 	permissionManagementGroup := r.Group("/api/v1/permission-management")
