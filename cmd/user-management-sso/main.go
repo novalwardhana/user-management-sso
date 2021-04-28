@@ -21,6 +21,10 @@ import (
 	permissionManagementHandler "github.com/novalwardhana/user-management-sso/package/permission-management/handler"
 	permissionManagementRepo "github.com/novalwardhana/user-management-sso/package/permission-management/repository"
 	permissionManagementUsecase "github.com/novalwardhana/user-management-sso/package/permission-management/usecase"
+
+	authHandler "github.com/novalwardhana/user-management-sso/package/auth/handler"
+	authRepo "github.com/novalwardhana/user-management-sso/package/auth/repository"
+	authUsecase "github.com/novalwardhana/user-management-sso/package/auth/usecase"
 )
 
 var dbMaster *postgres.DBConnection
@@ -56,6 +60,13 @@ func main() {
 	permissionManagementHandler := permissionManagementHandler.NewHTTPHandler(permissionManagementUsecase)
 	permissionManagementGroup := r.Group("/api/v1/permission-management")
 	permissionManagementHandler.Mount(permissionManagementGroup)
+
+	/* Auth */
+	authRepo := authRepo.NewAuthRepo(dbMaster)
+	authUsecase := authUsecase.NewAuthUsecase(authRepo)
+	authHandler := authHandler.NewHTTPHandler(authUsecase)
+	authGroup := r.Group("/api/v1/auth")
+	authHandler.Mount(authGroup)
 
 	port := fmt.Sprintf(":%s", os.Getenv(constant.ENVPort))
 	r.Start(port)
