@@ -1,6 +1,14 @@
 package userverify
 
-import "github.com/labstack/echo"
+import (
+	"github.com/dgrijalva/jwt-go"
+	"github.com/labstack/echo"
+)
+
+type JwtCustomClaims struct {
+	Data interface{} `json:"data"`
+	jwt.StandardClaims
+}
 
 type RoleContext struct {
 	echo.Context

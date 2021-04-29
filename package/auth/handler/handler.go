@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo"
@@ -33,7 +32,9 @@ func (h *handler) login(c echo.Context) error {
 	}
 
 	result := <-h.usecase.Login(email, password)
-	fmt.Println(result)
+	if result.Error != nil {
+		return c.JSON(http.StatusUnauthorized, model.Response{StatusCode: http.StatusUnauthorized, Message: result.Error.Error()})
+	}
 
-	return nil
+	return c.JSON(http.StatusOK, model.Response{StatusCode: http.StatusOK, Message: "Success login", Data: result.Data})
 }
