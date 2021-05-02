@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo"
+	userverify "github.com/novalwardhana/user-management-sso/config/user-verify"
 	"github.com/novalwardhana/user-management-sso/package/auth/model"
 	"github.com/novalwardhana/user-management-sso/package/auth/usecase"
 )
@@ -20,6 +21,7 @@ func NewHTTPHandler(usecase usecase.AuthUsecase) *handler {
 
 func (h *handler) Mount(group *echo.Group) {
 	group.POST("/login", h.login)
+	group.POST("/refresh-token", h.refreshToken, userverify.Verify())
 }
 
 func (h *handler) login(c echo.Context) error {
@@ -37,4 +39,8 @@ func (h *handler) login(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, model.Response{StatusCode: http.StatusOK, Message: "Success login", Data: result.Data})
+}
+
+func (h *handler) refreshToken(mc echo.Context) error {
+	return nil
 }
