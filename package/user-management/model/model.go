@@ -47,6 +47,7 @@ type NewUser struct {
 	CreatedAtSTr string    `json:"created_at" gorm:"-"`
 	UpdatedAt    time.Time `json:"-" gorm:"column:updated_at"`
 	UpdatedAtStr string    `json:"updated_at" gorm:"-"`
+	UserUUID     string    `json:"-" gorm:"column:user_uuid"`
 }
 
 type UserHasRole struct {

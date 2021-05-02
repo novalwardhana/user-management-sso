@@ -33,7 +33,8 @@ func (r *authRepo) GetUserByEmail(email string) <-chan model.Result {
 				u.username,
 				u.email,
 				u.password,
-				u.is_active
+				u.is_active,
+				u.user_uuid
 			from users u
 			where u.email = ?
 			group by u.id order by u.id desc limit 1`

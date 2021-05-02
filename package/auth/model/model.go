@@ -25,8 +25,9 @@ type UserDataToken struct {
 }
 
 type AccessToken struct {
-	Type  string `json:"type"`
-	Token string `json:"token"`
+	Type         string `json:"type"`
+	Token        string `json:"token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 type User struct {
@@ -36,6 +37,7 @@ type User struct {
 	Email    string `json:"email" gorm:"column:email"`
 	Password string `json:"password" gorm:"password"`
 	IsActive bool   `json:"is_active" gorm:"column:is_active"`
+	UserUUID string `json:"-" gorm:"column:user_uuid"`
 }
 
 type Role struct {

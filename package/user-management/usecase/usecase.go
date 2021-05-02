@@ -3,6 +3,7 @@ package usecase
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/novalwardhana/user-management-sso/package/user-management/model"
 	"github.com/novalwardhana/user-management-sso/package/user-management/repository"
 )
@@ -50,6 +51,7 @@ func (uc *userManagementUsecase) AddUserData(param model.NewUserParam) <-chan mo
 	go func() {
 		defer close(output)
 
+		param.NewUser.UserUUID = uuid.New().String()
 		resultUser := <-uc.repo.AddUserData(param.NewUser)
 		if resultUser.Error != nil {
 			output <- model.Result{Error: resultUser.Error}

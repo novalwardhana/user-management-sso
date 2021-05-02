@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -18,6 +19,8 @@ type authUsecase struct {
 
 type AuthUsecase interface {
 	Login(string, string) <-chan model.Result
+	CreateToken(*model.UserDataToken) (string, error)
+	CreateRefreshToken(string) (string, error)
 }
 
 func NewAuthUsecase(repo repository.AuthRepo) AuthUsecase {
@@ -67,26 +70,21 @@ func (uc *authUsecase) Login(email, password string) <-chan model.Result {
 			Roles:       roles,
 			Permissions: permissions,
 		}
-
-		ExpiresIn, err := time.ParseDuration(constant.ENVDefaultTokenExpiresIn)
-		if err != nil {
-			ExpiresIn = time.Duration(8 * time.Hour)
-		}
-		tokenData := userverify.JwtCustomClaims{
-			Data: userDataToken,
-		}
-		tokenData.IssuedAt = time.Now().Unix()
-		tokenData.ExpiresAt = time.Now().Add(ExpiresIn).Unix()
-
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenData)
-		tokenEncrypt, err := token.SignedString([]byte(constant.ENVAccessTokenSecret))
+		token, err := uc.CreateToken(&userDataToken)
 		if err != nil {
 			output <- model.Result{Error: err}
 			return
 		}
+		refreshToken, err := uc.CreateRefreshToken(user.UserUUID)
+		if err != nil {
+			output <- model.Result{Error: err}
+			return
+		}
+
 		accessToken := model.AccessToken{
-			Type:  "bearer",
-			Token: tokenEncrypt,
+			Type:         "bearer",
+			Token:        token,
+			RefreshToken: refreshToken,
 		}
 
 		userData := model.UserData{
@@ -100,4 +98,48 @@ func (uc *authUsecase) Login(email, password string) <-chan model.Result {
 
 	}()
 	return output
+}
+
+func (uc *authUsecase) CreateToken(data *model.UserDataToken) (string, error) {
+	ExpiresIn, err := time.ParseDuration(os.Getenv(constant.ENVAccessTokenExpiresIn))
+	if err != nil {
+		ExpiresIn = time.Duration(3 * time.Hour)
+	}
+	tokenData := userverify.JwtCustomClaims{
+		Data: data,
+	}
+	tokenData.IssuedAt = time.Now().Unix()
+	tokenData.ExpiresAt = time.Now().Add(ExpiresIn).Unix()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenData)
+
+	fmt.Println("Token secret", os.Getenv(constant.ENVAccessTokenSecret))
+	tokenEncrypt, err := token.SignedString([]byte(os.Getenv(constant.ENVAccessTokenSecret)))
+	if err != nil {
+		return "", err
+	}
+
+	return tokenEncrypt, nil
+}
+
+func (uc *authUsecase) CreateRefreshToken(userUUID string) (string, error) {
+	ExpiresIn, err := time.ParseDuration(os.Getenv(constant.ENVRefreshTokenExpiresIn))
+	if err != nil {
+		ExpiresIn = time.Duration(24 * time.Hour)
+	}
+	tokenData := userverify.JwtCustomClaims{
+		Data: map[string]interface{}{
+			"user_uuid": userUUID,
+		},
+	}
+	tokenData.IssuedAt = time.Now().Unix()
+	tokenData.ExpiresAt = time.Now().Add(ExpiresIn).Unix()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenData)
+
+	fmt.Println("Refresh token secret", os.Getenv(constant.ENVRefreshTokenSecret))
+	tokenEncrypt, err := token.SignedString([]byte(os.Getenv(constant.ENVRefreshTokenSecret)))
+	if err != nil {
+		return "", err
+	}
+	return tokenEncrypt, nil
+
 }
