@@ -94,7 +94,7 @@ func (r *authRepo) GetPermission(roleIDs []int) <-chan model.Result {
 	go func() {
 		defer close(output)
 
-		var permissions []model.Permission
+		var permissions = make(map[string]string)
 		sql := `select 
 				p.id,
 				p.code,
@@ -119,7 +119,7 @@ func (r *authRepo) GetPermission(roleIDs []int) <-chan model.Result {
 				output <- model.Result{Error: err}
 				return
 			}
-			permissions = append(permissions, permission)
+			permissions[permission.Code] = permission.Name
 		}
 
 		output <- model.Result{Data: permissions}

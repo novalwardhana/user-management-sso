@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo"
@@ -42,5 +43,12 @@ func (h *handler) login(c echo.Context) error {
 }
 
 func (h *handler) refreshToken(mc echo.Context) error {
+	c := mc.(*userverify.RoleContext)
+
+	fmt.Println("User", c.User)
+	fmt.Println("Roles", c.Roles)
+	fmt.Println("Permissions", c.Permissions)
+	refreshToken := c.FormValue("refresh_token")
+	fmt.Println("refreshToken: ", refreshToken)
 	return nil
 }

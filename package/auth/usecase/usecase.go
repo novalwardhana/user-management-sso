@@ -52,10 +52,11 @@ func (uc *authUsecase) Login(email, password string) <-chan model.Result {
 			return
 		}
 		var roles = resultRole.Data.([]model.Role)
-
 		var roleIDs []int
+		var roleMaps = make(map[string]string)
 		for _, role := range roles {
 			roleIDs = append(roleIDs, role.ID)
+			roleMaps[role.Code] = role.Name
 		}
 
 		resultPermission := <-uc.repo.GetPermission(roleIDs)
@@ -63,11 +64,11 @@ func (uc *authUsecase) Login(email, password string) <-chan model.Result {
 			output <- model.Result{Error: resultPermission.Error}
 			return
 		}
-		var permissions = resultPermission.Data.([]model.Permission)
+		var permissions = resultPermission.Data.(map[string]string)
 
 		userDataToken := model.UserDataToken{
 			User:        user,
-			Roles:       roles,
+			Roles:       roleMaps,
 			Permissions: permissions,
 		}
 		token, err := uc.CreateToken(&userDataToken)
@@ -89,7 +90,7 @@ func (uc *authUsecase) Login(email, password string) <-chan model.Result {
 
 		userData := model.UserData{
 			User:        user,
-			Roles:       roles,
+			Roles:       roleMaps,
 			Permissions: permissions,
 			AccessToken: accessToken,
 		}
@@ -112,7 +113,6 @@ func (uc *authUsecase) CreateToken(data *model.UserDataToken) (string, error) {
 	tokenData.ExpiresAt = time.Now().Add(ExpiresIn).Unix()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenData)
 
-	fmt.Println("Token secret", os.Getenv(constant.ENVAccessTokenSecret))
 	tokenEncrypt, err := token.SignedString([]byte(os.Getenv(constant.ENVAccessTokenSecret)))
 	if err != nil {
 		return "", err
@@ -135,7 +135,6 @@ func (uc *authUsecase) CreateRefreshToken(userUUID string) (string, error) {
 	tokenData.ExpiresAt = time.Now().Add(ExpiresIn).Unix()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenData)
 
-	fmt.Println("Refresh token secret", os.Getenv(constant.ENVRefreshTokenSecret))
 	tokenEncrypt, err := token.SignedString([]byte(os.Getenv(constant.ENVRefreshTokenSecret)))
 	if err != nil {
 		return "", err

@@ -12,16 +12,16 @@ type Response struct {
 }
 
 type UserData struct {
-	User        User         `json:"user"`
-	Roles       []Role       `json:"roles"`
-	Permissions []Permission `json:"permissions"`
-	AccessToken AccessToken  `json:"access_token"`
+	User        User              `json:"user"`
+	Roles       map[string]string `json:"roles"`
+	Permissions map[string]string `json:"permissions"`
+	AccessToken AccessToken       `json:"access_token"`
 }
 
 type UserDataToken struct {
-	User        User         `json:"user"`
-	Roles       []Role       `json:"roles"`
-	Permissions []Permission `json:"permissions"`
+	User        User              `json:"user"`
+	Roles       map[string]string `json:"roles"`
+	Permissions map[string]string `json:"permissions"`
 }
 
 type AccessToken struct {
