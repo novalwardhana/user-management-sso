@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo"
@@ -45,10 +44,16 @@ func (h *handler) login(c echo.Context) error {
 func (h *handler) refreshToken(mc echo.Context) error {
 	c := mc.(*userverify.RoleContext)
 
-	fmt.Println("User", c.User)
-	fmt.Println("Roles", c.Roles)
-	fmt.Println("Permissions", c.Permissions)
 	refreshToken := c.FormValue("refresh_token")
-	fmt.Println("refreshToken: ", refreshToken)
-	return nil
+	resultDecrypt := <-h.usecase.DecryptRefreshToken(refreshToken)
+	if resultDecrypt.Error != nil {
+		return c.JSON(http.StatusUnauthorized, model.Response{StatusCode: http.StatusUnauthorized, Message: resultDecrypt.Error.Error()})
+	}
+
+	resultNewToken := <-h.usecase.GenerateNewToken(c.User.Email, resultDecrypt.Data.(string))
+	if resultNewToken.Error != nil {
+		return c.JSON(http.StatusUnauthorized, model.Response{StatusCode: http.StatusUnauthorized, Message: resultNewToken.Error.Error()})
+	}
+
+	return c.JSON(http.StatusOK, model.Response{StatusCode: http.StatusOK, Message: "Success refresh token", Data: resultNewToken.Data})
 }

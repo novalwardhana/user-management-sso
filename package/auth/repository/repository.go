@@ -11,6 +11,7 @@ type authRepo struct {
 
 type AuthRepo interface {
 	GetUserByEmail(string) <-chan model.Result
+	GetUserByEmailUUID(string, string) <-chan model.Result
 	GetRole(int) <-chan model.Result
 	GetPermission([]int) <-chan model.Result
 }
@@ -39,6 +40,34 @@ func (r *authRepo) GetUserByEmail(email string) <-chan model.Result {
 			where u.email = ?
 			group by u.id order by u.id desc limit 1`
 		err := r.dbMaster.Read.Raw(sql, email).Scan(&user).Error
+		if err != nil {
+			output <- model.Result{Error: err}
+			return
+		}
+
+		output <- model.Result{Data: user}
+	}()
+	return output
+}
+
+func (r *authRepo) GetUserByEmailUUID(email, uuid string) <-chan model.Result {
+	output := make(chan model.Result)
+	go func() {
+		defer close(output)
+
+		var user model.User
+		sql := `select 
+				u.id,
+				u.name,
+				u.username,
+				u.email,
+				'' as password,
+				u.is_active,
+				u.user_uuid
+			from users u
+			where u.email = ? and user_uuid = ?
+			group by u.id order by u.id desc limit 1`
+		err := r.dbMaster.Read.Raw(sql, email, uuid).Scan(&user).Error
 		if err != nil {
 			output <- model.Result{Error: err}
 			return

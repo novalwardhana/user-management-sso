@@ -61,6 +61,7 @@ func Verify() echo.MiddlewareFunc {
 				ID:       int(tokenDataUser["id"].(float64)),
 				Name:     tokenDataUser["name"].(string),
 				Username: tokenDataUser["username"].(string),
+				Email:    tokenDataUser["email"].(string),
 				IsActive: tokenDataUser["is_active"].(bool),
 			}
 			roles := make(map[string]string)

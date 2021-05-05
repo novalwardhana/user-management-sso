@@ -21,6 +21,8 @@ type AuthUsecase interface {
 	Login(string, string) <-chan model.Result
 	CreateToken(*model.UserDataToken) (string, error)
 	CreateRefreshToken(string) (string, error)
+	DecryptRefreshToken(string) <-chan model.Result
+	GenerateNewToken(string, string) <-chan model.Result
 }
 
 func NewAuthUsecase(repo repository.AuthRepo) AuthUsecase {
@@ -141,4 +143,98 @@ func (uc *authUsecase) CreateRefreshToken(userUUID string) (string, error) {
 	}
 	return tokenEncrypt, nil
 
+}
+
+func (uc *authUsecase) DecryptRefreshToken(refreshToken string) <-chan model.Result {
+	output := make(chan model.Result)
+	go func() {
+		defer close(output)
+
+		token, err := jwt.ParseWithClaims(refreshToken, &userverify.JwtCustomClaims{}, func(token *jwt.Token) (interface{}, error) {
+			return []byte(os.Getenv(constant.ENVRefreshTokenSecret)), nil
+		})
+		if err != nil {
+			output <- model.Result{Error: err}
+			return
+		}
+		if !token.Valid {
+			output <- model.Result{Error: fmt.Errorf("Refresh token is invalid")}
+			return
+		}
+
+		tokenDecode, status := token.Claims.(*userverify.JwtCustomClaims)
+		if !status {
+			output <- model.Result{Error: fmt.Errorf("Status token is invalid")}
+			return
+		}
+
+		tokenData := tokenDecode.Data.(map[string]interface{})
+		userUUID := tokenData["user_uuid"]
+		if userUUID == nil {
+			output <- model.Result{Error: fmt.Errorf("Refresh token is invalid not contain user uuid")}
+			return
+		}
+
+		output <- model.Result{Data: userUUID.(string)}
+	}()
+	return output
+}
+
+func (uc *authUsecase) GenerateNewToken(email, uuid string) <-chan model.Result {
+	output := make(chan model.Result)
+	go func() {
+		defer close(output)
+
+		resultUser := <-uc.repo.GetUserByEmailUUID(email, uuid)
+		if resultUser.Error != nil {
+			output <- model.Result{Error: resultUser.Error}
+			return
+		}
+		user := resultUser.Data.(model.User)
+
+		resultRole := <-uc.repo.GetRole(user.ID)
+		if resultRole.Error != nil {
+			output <- model.Result{Error: resultRole.Error}
+			return
+		}
+		var roles = resultRole.Data.([]model.Role)
+		var roleIDs []int
+		var roleMaps = make(map[string]string)
+		for _, role := range roles {
+			roleIDs = append(roleIDs, role.ID)
+			roleMaps[role.Code] = role.Name
+		}
+
+		resultPermission := <-uc.repo.GetPermission(roleIDs)
+		if resultPermission.Error != nil {
+			output <- model.Result{Error: resultPermission.Error}
+			return
+		}
+		var permissions = resultPermission.Data.(map[string]string)
+
+		userDataToken := model.UserDataToken{
+			User:        user,
+			Roles:       roleMaps,
+			Permissions: permissions,
+		}
+		token, err := uc.CreateToken(&userDataToken)
+		if err != nil {
+			output <- model.Result{Error: err}
+			return
+		}
+		refreshToken, err := uc.CreateRefreshToken(user.UserUUID)
+		if err != nil {
+			output <- model.Result{Error: err}
+			return
+		}
+
+		accessToken := model.AccessToken{
+			Type:         "bearer",
+			Token:        token,
+			RefreshToken: refreshToken,
+		}
+
+		output <- model.Result{Data: accessToken}
+	}()
+	return output
 }
