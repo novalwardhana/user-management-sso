@@ -22,6 +22,7 @@ func NewHTTPHandler(usecase usecase.AuthUsecase) *handler {
 func (h *handler) Mount(group *echo.Group) {
 	group.POST("/login", h.login)
 	group.POST("/refresh-token", h.refreshToken, userverify.Verify())
+	group.GET("/me", h.authMe, userverify.Verify())
 }
 
 func (h *handler) login(c echo.Context) error {
@@ -56,4 +57,15 @@ func (h *handler) refreshToken(mc echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, model.Response{StatusCode: http.StatusOK, Message: "Success refresh token", Data: resultNewToken.Data})
+}
+
+func (h *handler) authMe(mc echo.Context) error {
+	c := mc.(*userverify.RoleContext)
+
+	result := <-h.usecase.GetUserData(c.User.ID, c.User.Email)
+	if result.Error != nil {
+		return c.JSON(http.StatusUnauthorized, model.Response{StatusCode: http.StatusUnauthorized, Message: result.Error.Error()})
+	}
+
+	return c.JSON(http.StatusOK, model.Response{StatusCode: http.StatusOK, Message: "Success get user data", Data: result.Data})
 }

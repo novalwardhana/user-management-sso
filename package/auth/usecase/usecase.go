@@ -23,6 +23,7 @@ type AuthUsecase interface {
 	CreateRefreshToken(string) (string, error)
 	DecryptRefreshToken(string) <-chan model.Result
 	GenerateNewToken(string, string) <-chan model.Result
+	GetUserData(int, string) <-chan model.Result
 }
 
 func NewAuthUsecase(repo repository.AuthRepo) AuthUsecase {
@@ -235,6 +236,54 @@ func (uc *authUsecase) GenerateNewToken(email, uuid string) <-chan model.Result 
 		}
 
 		output <- model.Result{Data: accessToken}
+	}()
+	return output
+}
+
+func (uc *authUsecase) GetUserData(id int, email string) <-chan model.Result {
+	output := make(chan model.Result)
+	go func() {
+		defer close(output)
+
+		resultUser := <-uc.repo.GetUserByEmail(email)
+		if resultUser.Error != nil {
+			output <- model.Result{Error: fmt.Errorf("Error when get user data: (%s)", resultUser.Error.Error())}
+			return
+		}
+		user := resultUser.Data.(model.User)
+		if user.ID != id {
+			output <- model.Result{Error: fmt.Errorf("JWT token is invalid")}
+			return
+		}
+		user.Password = ""
+
+		resultRole := <-uc.repo.GetRole(user.ID)
+		if resultRole.Error != nil {
+			output <- model.Result{Error: fmt.Errorf("Error when get role data: (%s)", resultRole.Error.Error())}
+			return
+		}
+		var roles = resultRole.Data.([]model.Role)
+		var roleIDs []int
+		var roleMaps = make(map[string]string)
+		for _, role := range roles {
+			roleIDs = append(roleIDs, role.ID)
+			roleMaps[role.Code] = role.Name
+		}
+
+		resultPermission := <-uc.repo.GetPermission(roleIDs)
+		if resultPermission.Error != nil {
+			output <- model.Result{Error: fmt.Errorf("Erro when get permission data: (%s)", resultPermission.Error.Error())}
+			return
+		}
+		var permissions = resultPermission.Data.(map[string]string)
+
+		userDataToken := model.UserDataToken{
+			User:        user,
+			Roles:       roleMaps,
+			Permissions: permissions,
+		}
+
+		output <- model.Result{Data: userDataToken}
 	}()
 	return output
 }
