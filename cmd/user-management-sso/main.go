@@ -22,13 +22,13 @@ import (
 	permissionManagementRepo "github.com/novalwardhana/user-management-sso/package/permission-management/repository"
 	permissionManagementUsecase "github.com/novalwardhana/user-management-sso/package/permission-management/usecase"
 
-	singleSignOnHandler "github.com/novalwardhana/user-management-sso/package/single-sign-on/handler"
-	singleSignOnRepo "github.com/novalwardhana/user-management-sso/package/single-sign-on/repository"
-	singleSignOnUsecase "github.com/novalwardhana/user-management-sso/package/single-sign-on/usecase"
-
 	authHandler "github.com/novalwardhana/user-management-sso/package/auth/handler"
 	authRepo "github.com/novalwardhana/user-management-sso/package/auth/repository"
 	authUsecase "github.com/novalwardhana/user-management-sso/package/auth/usecase"
+
+	singleSignOnHandler "github.com/novalwardhana/user-management-sso/package/single-sign-on/handler"
+	singleSignOnRepo "github.com/novalwardhana/user-management-sso/package/single-sign-on/repository"
+	singleSignOnUsecase "github.com/novalwardhana/user-management-sso/package/single-sign-on/usecase"
 )
 
 var dbMaster *postgres.DBConnection
