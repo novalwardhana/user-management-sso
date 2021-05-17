@@ -21,6 +21,8 @@ func NewHTTPHandler(usecase usecase.SingleSignOnUsecase) *handler {
 
 func (h *handler) Mount(group *echo.Group) {
 	group.GET("/authorize", h.authorize, userverify.Verify())
+	group.GET("/token-validation", h.tokenValidation, userverify.Verify())
+	group.GET("/token-exchange", h.tokenExchange)
 }
 
 func (h *handler) authorize(mc echo.Context) error {
@@ -32,4 +34,35 @@ func (h *handler) authorize(mc echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, model.Response{StatusCode: http.StatusOK, Message: "Successfully get user unique code", Data: result.Data})
+}
+
+func (h *handler) tokenValidation(mc echo.Context) error {
+	c := mc.(*userverify.RoleContext)
+	return c.JSON(http.StatusOK, model.Response{StatusCode: http.StatusOK, Message: "Successfully validate token"})
+}
+
+func (h *handler) tokenExchange(c echo.Context) error {
+
+	email := c.QueryParam("email")
+	uniqueCode := c.QueryParam("unique_code")
+	domain := c.QueryParam("domain")
+	secret := c.QueryParam("secret")
+
+	if len(email) == 0 || len(uniqueCode) == 0 || len(domain) == 0 || len(secret) == 0 {
+		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: "Email, unique code, domain, secret must be filled"})
+	}
+
+	params := model.TokenExchangeParams{
+		Email:      email,
+		UniqueCode: uniqueCode,
+		Domain:     domain,
+		Secret:     secret,
+	}
+
+	result := <-h.usecase.TokenExchange(params)
+	if result.Error != nil {
+		return c.JSON(http.StatusUnauthorized, model.Response{StatusCode: http.StatusUnauthorized, Message: result.Error.Error()})
+	}
+
+	return c.JSON(http.StatusOK, model.Response{StatusCode: http.StatusOK, Message: "Success process token exchange", Data: result.Data})
 }
