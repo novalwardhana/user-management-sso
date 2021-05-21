@@ -51,3 +51,9 @@ func (NewPermission) TableName() string {
 func (UpdatePermission) TableName() string {
 	return "public.permissions"
 }
+
+type ListParams struct {
+	Page   int
+	Limit  int
+	Offset int
+}

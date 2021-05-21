@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"github.com/novalwardhana/user-management-sso/library/pagination"
 	"github.com/novalwardhana/user-management-sso/package/permission-management/model"
 	"github.com/novalwardhana/user-management-sso/package/permission-management/repository"
 )
@@ -10,7 +11,7 @@ type permissionManagementUsecase struct {
 }
 
 type PermissionManagementUsecase interface {
-	GetPermissionData() <-chan model.Result
+	GetPermissionData(model.ListParams) <-chan model.Result
 	GetPermissionByID(int) <-chan model.Result
 	AddPermissionData(model.NewPermission) <-chan model.Result
 	UpdatePermissionData(int, model.UpdatePermission) <-chan model.Result
@@ -23,12 +24,34 @@ func NewPermissionManagementUsecase(repo repository.PermissionManagementRepo) Pe
 	}
 }
 
-func (uc *permissionManagementUsecase) GetPermissionData() <-chan model.Result {
+func (uc *permissionManagementUsecase) GetPermissionData(params model.ListParams) <-chan model.Result {
 	output := make(chan model.Result)
 	go func() {
 		defer close(output)
-		result := <-uc.repo.GetPermissionData()
-		output <- result
+
+		resultTotalData := <-uc.repo.GetTotalPermissionData()
+		if resultTotalData.Error != nil {
+			output <- model.Result{Error: resultTotalData.Error}
+			return
+		}
+
+		total := resultTotalData.Data.(int)
+		params.Offset = (params.Page - 1) * params.Limit
+
+		resultData := <-uc.repo.GetPermissionData(params)
+		if resultData.Error != nil {
+			output <- model.Result{Error: resultTotalData.Error}
+			return
+		}
+		paginationTable := pagination.PaginationTable{
+			Page:    params.Page,
+			Total:   total,
+			PerPage: params.Limit,
+			Data:    resultData.Data,
+		}
+		paginationTable.PaginationLastPage(params.Limit)
+
+		output <- model.Result{Data: paginationTable}
 	}()
 	return output
 }

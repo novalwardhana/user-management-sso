@@ -13,11 +13,12 @@ type permissionManagementRepo struct {
 }
 
 type PermissionManagementRepo interface {
-	GetPermissionData() <-chan model.Result
+	GetPermissionData(model.ListParams) <-chan model.Result
 	GetPermissionByID(int) <-chan model.Result
 	AddPermissionData(model.NewPermission) <-chan model.Result
 	UpdatePermissionData(int, model.UpdatePermission) <-chan model.Result
 	DeletePermissionData(int) <-chan model.Result
+	GetTotalPermissionData() <-chan model.Result
 }
 
 func NewPermissionManagementRepo(dbMaster *postgres.DBConnection) PermissionManagementRepo {
@@ -26,13 +27,13 @@ func NewPermissionManagementRepo(dbMaster *postgres.DBConnection) PermissionMana
 	}
 }
 
-func (r *permissionManagementRepo) GetPermissionData() <-chan model.Result {
+func (r *permissionManagementRepo) GetPermissionData(params model.ListParams) <-chan model.Result {
 	output := make(chan model.Result)
 	go func() {
 		defer close(output)
 		var permissions []model.Permission
-		sql := `SELECT id, code, name, description FROM permissions order by id desc`
-		rows, err := r.dbMaster.Read.Raw(sql).Rows()
+		sql := `SELECT id, code, name, description FROM permissions order by id desc offset ? limit ?`
+		rows, err := r.dbMaster.Read.Raw(sql, params.Offset, params.Limit).Rows()
 		if err != nil {
 			output <- model.Result{Error: err}
 			return
@@ -131,6 +132,23 @@ func (r *permissionManagementRepo) DeletePermissionData(id int) <-chan model.Res
 			return
 		}
 		output <- model.Result{}
+	}()
+	return output
+}
+
+func (r *permissionManagementRepo) GetTotalPermissionData() <-chan model.Result {
+	output := make(chan model.Result)
+	go func() {
+		defer close(output)
+
+		var count int
+		sql := `select count(*) from permissions`
+		if err := r.dbMaster.Read.Raw(sql).Count(&count).Error; err != nil {
+			output <- model.Result{Error: err}
+			return
+		}
+
+		output <- model.Result{Data: count}
 	}()
 	return output
 }
