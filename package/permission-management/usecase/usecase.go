@@ -44,12 +44,12 @@ func (uc *permissionManagementUsecase) GetPermissionData(params model.ListParams
 			return
 		}
 		paginationTable := pagination.PaginationTable{
-			Page:    params.Page,
-			Total:   total,
-			PerPage: params.Limit,
-			Data:    resultData.Data,
+			Page:        params.Page,
+			TotalData:   total,
+			DataPerPage: params.Limit,
+			Data:        resultData.Data,
 		}
-		paginationTable.PaginationLastPage(params.Limit)
+		paginationTable.PaginationLastPage()
 
 		output <- model.Result{Data: paginationTable}
 	}()
