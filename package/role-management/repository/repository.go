@@ -15,13 +15,14 @@ type roleManagementRepo struct {
 }
 
 type RoleManagementRepo interface {
-	GetRoleData() <-chan model.Result
+	GetRoleData(model.ListParams) <-chan model.Result
 	GetRoleByID(int) <-chan model.Result
 	AddRoleData(model.NewRole) <-chan model.Result
 	AddRolePermissionData([]model.RoleHasPermission) <-chan model.Result
 	UpdateRoleData(int, model.UpdateRole) <-chan model.Result
 	DeleteRoleData(int) <-chan model.Result
 	DeleteRolePermissionData(int) <-chan model.Result
+	GetTotalRoleData(model.ListParams) <-chan model.Result
 }
 
 func NewRoleManagementRepo(dbMaster *postgres.DBConnection) RoleManagementRepo {
@@ -30,7 +31,7 @@ func NewRoleManagementRepo(dbMaster *postgres.DBConnection) RoleManagementRepo {
 	}
 }
 
-func (r *roleManagementRepo) GetRoleData() <-chan model.Result {
+func (r *roleManagementRepo) GetRoleData(params model.ListParams) <-chan model.Result {
 	output := make(chan model.Result)
 	go func() {
 		defer close(output)
@@ -46,8 +47,9 @@ func (r *roleManagementRepo) GetRoleData() <-chan model.Result {
 			from roles r
 			left join role_has_permissions rhp on r.id = rhp.role_id
 			left join permissions p on rhp.permission_id = p.id
-			group by r.id order by r.id desc`
-		rows, err := r.dbMaster.Read.Raw(sql).Rows()
+			group by r.id order by r.id desc
+			offset ? limit ?`
+		rows, err := r.dbMaster.Read.Raw(sql, params.Offset, params.Limit).Rows()
 		if err != nil {
 			output <- model.Result{Error: err}
 			return
@@ -208,6 +210,23 @@ func (r *roleManagementRepo) DeleteRolePermissionData(roleID int) <-chan model.R
 		}
 
 		output <- model.Result{}
+	}()
+	return output
+}
+
+func (r *roleManagementRepo) GetTotalRoleData(params model.ListParams) <-chan model.Result {
+	output := make(chan model.Result)
+	go func() {
+		defer close(output)
+
+		var count int
+		sql := `select count(*) from roles`
+		if err := r.dbMaster.Read.Raw(sql).Count(&count).Error; err != nil {
+			output <- model.Result{Error: err}
+			return
+		}
+
+		output <- model.Result{Data: count}
 	}()
 	return output
 }

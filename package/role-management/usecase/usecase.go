@@ -3,6 +3,7 @@ package usecase
 import (
 	"time"
 
+	"github.com/novalwardhana/user-management-sso/library/pagination"
 	"github.com/novalwardhana/user-management-sso/package/role-management/model"
 	"github.com/novalwardhana/user-management-sso/package/role-management/repository"
 )
@@ -12,7 +13,7 @@ type roleManagementUsecase struct {
 }
 
 type RoleManagementUsecase interface {
-	GetRoleData() <-chan model.Result
+	GetRoleData(model.ListParams) <-chan model.Result
 	GetRoleByID(int) <-chan model.Result
 	AddRoleData(model.NewRoleParam) <-chan model.Result
 	UpdateRoleData(int, model.UpdateRoleParam) <-chan model.Result
@@ -25,12 +26,33 @@ func NewRoleManagementUsecase(repo repository.RoleManagementRepo) RoleManagement
 	}
 }
 
-func (uc *roleManagementUsecase) GetRoleData() <-chan model.Result {
+func (uc *roleManagementUsecase) GetRoleData(params model.ListParams) <-chan model.Result {
 	output := make(chan model.Result)
 	go func() {
 		defer close(output)
-		result := <-uc.repo.GetRoleData()
-		output <- result
+
+		params.Offset = (params.Page - 1) * params.Limit
+		resultTotalData := <-uc.repo.GetTotalRoleData(params)
+		if resultTotalData.Error != nil {
+			output <- model.Result{Error: resultTotalData.Error}
+			return
+		}
+		total := resultTotalData.Data.(int)
+
+		resultData := <-uc.repo.GetRoleData(params)
+		if resultData.Error != nil {
+			output <- model.Result{Error: resultTotalData.Error}
+			return
+		}
+		paginationTable := pagination.PaginationTable{
+			Page:        params.Page,
+			TotalData:   total,
+			DataPerPage: params.Limit,
+			Data:        resultData.Data,
+		}
+		paginationTable.PaginationTotalPage()
+
+		output <- model.Result{Data: paginationTable}
 	}()
 	return output
 }

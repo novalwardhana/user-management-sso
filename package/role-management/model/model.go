@@ -84,3 +84,9 @@ func (UpdateRole) TableName() string {
 func (RoleHasPermission) TableName() string {
 	return "public.role_has_permissions"
 }
+
+type ListParams struct {
+	Page   int
+	Limit  int
+	Offset int
+}

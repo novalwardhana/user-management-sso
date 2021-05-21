@@ -18,7 +18,7 @@ type PermissionManagementRepo interface {
 	AddPermissionData(model.NewPermission) <-chan model.Result
 	UpdatePermissionData(int, model.UpdatePermission) <-chan model.Result
 	DeletePermissionData(int) <-chan model.Result
-	GetTotalPermissionData() <-chan model.Result
+	GetTotalPermissionData(model.ListParams) <-chan model.Result
 }
 
 func NewPermissionManagementRepo(dbMaster *postgres.DBConnection) PermissionManagementRepo {
@@ -136,7 +136,7 @@ func (r *permissionManagementRepo) DeletePermissionData(id int) <-chan model.Res
 	return output
 }
 
-func (r *permissionManagementRepo) GetTotalPermissionData() <-chan model.Result {
+func (r *permissionManagementRepo) GetTotalPermissionData(params model.ListParams) <-chan model.Result {
 	output := make(chan model.Result)
 	go func() {
 		defer close(output)

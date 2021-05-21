@@ -29,14 +29,14 @@ func (uc *permissionManagementUsecase) GetPermissionData(params model.ListParams
 	go func() {
 		defer close(output)
 
-		resultTotalData := <-uc.repo.GetTotalPermissionData()
+		params.Offset = (params.Page - 1) * params.Limit
+		resultTotalData := <-uc.repo.GetTotalPermissionData(params)
 		if resultTotalData.Error != nil {
 			output <- model.Result{Error: resultTotalData.Error}
 			return
 		}
 
 		total := resultTotalData.Data.(int)
-		params.Offset = (params.Page - 1) * params.Limit
 
 		resultData := <-uc.repo.GetPermissionData(params)
 		if resultData.Error != nil {
@@ -49,7 +49,7 @@ func (uc *permissionManagementUsecase) GetPermissionData(params model.ListParams
 			DataPerPage: params.Limit,
 			Data:        resultData.Data,
 		}
-		paginationTable.PaginationLastPage()
+		paginationTable.PaginationTotalPage()
 
 		output <- model.Result{Data: paginationTable}
 	}()

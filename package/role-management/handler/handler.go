@@ -31,7 +31,33 @@ func (h *handler) Mount(group *echo.Group) {
 
 func (h *handler) getRoleData(mc echo.Context) error {
 	c := mc.(*userVerify.RoleContext)
-	result := <-h.usecase.GetRoleData()
+
+	page := c.QueryParam("page")
+	limit := c.QueryParam("limit")
+	if page == "" || limit == "" {
+		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: "Page and limit not found"})
+	}
+
+	paramPage, err := strconv.Atoi(page)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
+	}
+
+	paramLimit, err := strconv.Atoi(limit)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
+	}
+
+	if paramPage <= 0 || paramLimit <= 0 {
+		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: "Page or limit parameter is 0 or less than 0"})
+	}
+
+	params := model.ListParams{
+		Page:  paramPage,
+		Limit: paramLimit,
+	}
+
+	result := <-h.usecase.GetRoleData(params)
 	if result.Error != nil {
 		return c.JSON(http.StatusNotAcceptable, model.Response{StatusCode: http.StatusNotAcceptable, Message: result.Error.Error()})
 	}

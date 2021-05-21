@@ -10,6 +10,6 @@ type PaginationTable struct {
 	Data        interface{} `json:"data"`
 }
 
-func (p *PaginationTable) PaginationLastPage() {
+func (p *PaginationTable) PaginationTotalPage() {
 	p.TotalPage = int(math.Ceil(float64(p.TotalData) / float64(p.DataPerPage)))
 }
