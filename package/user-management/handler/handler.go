@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo"
 	userVerify "github.com/novalwardhana/user-management-sso/config/user-verify"
 	"github.com/novalwardhana/user-management-sso/global/constant"
+	functionCode "github.com/novalwardhana/user-management-sso/global/function-code"
 	"github.com/novalwardhana/user-management-sso/package/user-management/model"
 	"github.com/novalwardhana/user-management-sso/package/user-management/usecase"
 	"golang.org/x/crypto/bcrypt"
@@ -24,11 +25,11 @@ func NewHTTPHandler(usecase usecase.UserManagementUsecase) *handler {
 }
 
 func (h *handler) Mount(group *echo.Group) {
-	group.GET("/list", h.getUserData, userVerify.Verify())
-	group.GET("/data/:id", h.getUserByID, userVerify.Verify())
-	group.POST("/add", h.addUser, userVerify.Verify())
-	group.PUT("/update/:id", h.updateUser, userVerify.Verify())
-	group.DELETE("/delete/:id", h.deleteUser, userVerify.Verify())
+	group.GET("/list", h.getUserData, userVerify.Verify(functionCode.UserListData))
+	group.GET("/data/:id", h.getUserByID, userVerify.Verify(functionCode.UserDetailData))
+	group.POST("/add", h.addUser, userVerify.Verify(functionCode.UserAddNewData))
+	group.PUT("/update/:id", h.updateUser, userVerify.Verify(functionCode.UserUpdateData))
+	group.DELETE("/delete/:id", h.deleteUser, userVerify.Verify(functionCode.UserDeleteData))
 }
 
 func (h *handler) getUserData(mc echo.Context) error {

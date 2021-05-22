@@ -5,6 +5,7 @@ import (
 
 	"github.com/labstack/echo"
 	userverify "github.com/novalwardhana/user-management-sso/config/user-verify"
+	functionCode "github.com/novalwardhana/user-management-sso/global/function-code"
 	"github.com/novalwardhana/user-management-sso/package/auth/model"
 	"github.com/novalwardhana/user-management-sso/package/auth/usecase"
 )
@@ -21,8 +22,8 @@ func NewHTTPHandler(usecase usecase.AuthUsecase) *handler {
 
 func (h *handler) Mount(group *echo.Group) {
 	group.POST("/login", h.login)
-	group.POST("/refresh-token", h.refreshToken, userverify.Verify())
-	group.GET("/me", h.authMe, userverify.Verify())
+	group.POST("/refresh-token", h.refreshToken, userverify.Verify(functionCode.AuthRefreshToken))
+	group.GET("/me", h.authMe, userverify.Verify(functionCode.AuthMe))
 }
 
 func (h *handler) login(c echo.Context) error {

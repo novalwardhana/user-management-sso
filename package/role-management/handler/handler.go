@@ -7,6 +7,7 @@ import (
 
 	"github.com/labstack/echo"
 	userVerify "github.com/novalwardhana/user-management-sso/config/user-verify"
+	functionCode "github.com/novalwardhana/user-management-sso/global/function-code"
 	"github.com/novalwardhana/user-management-sso/package/role-management/model"
 	"github.com/novalwardhana/user-management-sso/package/role-management/usecase"
 )
@@ -22,11 +23,11 @@ func NewHTTPHandler(usecase usecase.RoleManagementUsecase) *handler {
 }
 
 func (h *handler) Mount(group *echo.Group) {
-	group.GET("/list", h.getRoleData, userVerify.Verify())
-	group.GET("/data/:id", h.getRoleByID, userVerify.Verify())
-	group.POST("/add", h.addRoleData, userVerify.Verify())
-	group.PUT("/update/:id", h.updateRoleData, userVerify.Verify())
-	group.DELETE("/delete/:id", h.deleteRoleData, userVerify.Verify())
+	group.GET("/list", h.getRoleData, userVerify.Verify(functionCode.RoleListData))
+	group.GET("/data/:id", h.getRoleByID, userVerify.Verify(functionCode.RoleDetailData))
+	group.POST("/add", h.addRoleData, userVerify.Verify(functionCode.RoleAddNewData))
+	group.PUT("/update/:id", h.updateRoleData, userVerify.Verify(functionCode.RoleUpdateData))
+	group.DELETE("/delete/:id", h.deleteRoleData, userVerify.Verify(functionCode.RoleUpdateData))
 }
 
 func (h *handler) getRoleData(mc echo.Context) error {

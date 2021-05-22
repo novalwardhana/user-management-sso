@@ -7,6 +7,7 @@ import (
 
 	"github.com/labstack/echo"
 	userVerify "github.com/novalwardhana/user-management-sso/config/user-verify"
+	functionCode "github.com/novalwardhana/user-management-sso/global/function-code"
 	"github.com/novalwardhana/user-management-sso/package/permission-management/model"
 	"github.com/novalwardhana/user-management-sso/package/permission-management/usecase"
 )
@@ -22,11 +23,11 @@ func NewHTTPHandler(usecase usecase.PermissionManagementUsecase) *handler {
 }
 
 func (h *handler) Mount(group *echo.Group) {
-	group.GET("/list", h.getPermissionData, userVerify.Verify())
-	group.GET("/data/:id", h.getPermissionByID, userVerify.Verify())
-	group.POST("/add", h.addPermissionData, userVerify.Verify())
-	group.PUT("/update/:id", h.updatePermissionData, userVerify.Verify())
-	group.DELETE("/delete/:id", h.deletePermissionData, userVerify.Verify())
+	group.GET("/list", h.getPermissionData, userVerify.Verify(functionCode.PermissionListData))
+	group.GET("/data/:id", h.getPermissionByID, userVerify.Verify(functionCode.PermissionDetailData))
+	group.POST("/add", h.addPermissionData, userVerify.Verify(functionCode.PermissionAddNewData))
+	group.PUT("/update/:id", h.updatePermissionData, userVerify.Verify(functionCode.PermissionUpdateData))
+	group.DELETE("/delete/:id", h.deletePermissionData, userVerify.Verify(functionCode.PermissionDeleteData))
 }
 
 func (h *handler) getPermissionData(mc echo.Context) error {

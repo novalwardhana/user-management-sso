@@ -5,6 +5,7 @@ import (
 
 	"github.com/labstack/echo"
 	userverify "github.com/novalwardhana/user-management-sso/config/user-verify"
+	functionCode "github.com/novalwardhana/user-management-sso/global/function-code"
 	"github.com/novalwardhana/user-management-sso/package/single-sign-on/model"
 	"github.com/novalwardhana/user-management-sso/package/single-sign-on/usecase"
 )
@@ -20,8 +21,8 @@ func NewHTTPHandler(usecase usecase.SingleSignOnUsecase) *handler {
 }
 
 func (h *handler) Mount(group *echo.Group) {
-	group.GET("/authorize", h.authorize, userverify.Verify())
-	group.GET("/token-validation", h.tokenValidation, userverify.Verify())
+	group.GET("/authorize", h.authorize, userverify.Verify(functionCode.SSOAuthorize))
+	group.GET("/token-validation", h.tokenValidation, userverify.Verify(functionCode.SSOTokenValidation))
 	group.GET("/token-exchange", h.tokenExchange)
 }
 
