@@ -79,6 +79,11 @@ func Verify(functionCode string) echo.MiddlewareFunc {
 				}
 			}
 
+			_, permissionExist := permissions[functionCode]
+			if !permissionExist {
+				return c.JSON(http.StatusUnauthorized, library.Response{StatusCode: http.StatusUnauthorized, Message: "User not have permission to access this endpoint"})
+			}
+
 			mc := &RoleContext{User: &user, Roles: &roles, Permissions: &permissions, Context: c}
 			return next(mc)
 		}
