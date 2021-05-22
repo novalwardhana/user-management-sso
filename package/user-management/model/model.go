@@ -92,3 +92,9 @@ func (UpdateUser) TableName() string {
 func (UserHasRole) TableName() string {
 	return "public.user_has_roles"
 }
+
+type ListParams struct {
+	Page   int
+	Limit  int
+	Offset int
+}

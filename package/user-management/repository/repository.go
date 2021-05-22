@@ -15,13 +15,14 @@ type userManagementRepo struct {
 }
 
 type UserManagementRepo interface {
-	GetUserData() <-chan model.Result
+	GetUserData(model.ListParams) <-chan model.Result
 	GetUserByID(int) <-chan model.Result
 	AddUserData(model.NewUser) <-chan model.Result
 	AddUserHasRole([]model.UserHasRole) <-chan model.Result
 	UpdateUserData(int, model.UpdateUser) <-chan model.Result
 	DeleteUserData(int) <-chan model.Result
 	DeleteUserRoleData(int) <-chan model.Result
+	GetTotalUserData(model.ListParams) <-chan model.Result
 }
 
 func NewUserManagementRepo(dbMaster *postgres.DBConnection) UserManagementRepo {
@@ -30,7 +31,7 @@ func NewUserManagementRepo(dbMaster *postgres.DBConnection) UserManagementRepo {
 	}
 }
 
-func (r *userManagementRepo) GetUserData() <-chan model.Result {
+func (r *userManagementRepo) GetUserData(params model.ListParams) <-chan model.Result {
 	output := make(chan model.Result)
 	go func() {
 		defer close(output)
@@ -47,9 +48,10 @@ func (r *userManagementRepo) GetUserData() <-chan model.Result {
 				left join user_has_roles uhr on u.id = uhr.user_id
 				left join roles r on uhr.role_id = r.id
 				group by u.id
-				order by u.id desc`
+				order by u.id desc
+				offset ? limit ?`
 
-		rows, err := r.dbMaster.Read.Raw(sql).Rows()
+		rows, err := r.dbMaster.Read.Raw(sql, params.Offset, params.Limit).Rows()
 		if err != nil {
 			output <- model.Result{Error: err}
 			return
@@ -209,6 +211,23 @@ func (r *userManagementRepo) DeleteUserRoleData(userID int) <-chan model.Result 
 		}
 
 		output <- model.Result{}
+	}()
+	return output
+}
+
+func (r *userManagementRepo) GetTotalUserData(params model.ListParams) <-chan model.Result {
+	output := make(chan model.Result)
+	go func() {
+		defer close(output)
+
+		var count int
+		sql := `select count(*) from users`
+		if err := r.dbMaster.Read.Raw(sql).Count(&count).Error; err != nil {
+			output <- model.Result{Error: err}
+			return
+		}
+
+		output <- model.Result{Data: count}
 	}()
 	return output
 }

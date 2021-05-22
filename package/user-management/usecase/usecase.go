@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/novalwardhana/user-management-sso/library/pagination"
 	"github.com/novalwardhana/user-management-sso/package/user-management/model"
 	"github.com/novalwardhana/user-management-sso/package/user-management/repository"
 )
@@ -13,7 +14,7 @@ type userManagementUsecase struct {
 }
 
 type UserManagementUsecase interface {
-	GetUserData() <-chan model.Result
+	GetUserData(model.ListParams) <-chan model.Result
 	GetUserByID(int) <-chan model.Result
 	AddUserData(model.NewUserParam) <-chan model.Result
 	UpdateUserData(int, model.UpdateUserParam) <-chan model.Result
@@ -26,12 +27,34 @@ func NewUserManagementUsecase(repo repository.UserManagementRepo) UserManagement
 	}
 }
 
-func (uc *userManagementUsecase) GetUserData() <-chan model.Result {
+func (uc *userManagementUsecase) GetUserData(params model.ListParams) <-chan model.Result {
 	output := make(chan model.Result)
 	go func() {
 		defer close(output)
-		data := <-uc.repo.GetUserData()
-		output <- data
+
+		params.Offset = (params.Page - 1) * params.Limit
+		resultTotalData := <-uc.repo.GetTotalUserData(params)
+		if resultTotalData.Error != nil {
+			output <- model.Result{Error: resultTotalData.Error}
+			return
+		}
+
+		total := resultTotalData.Data.(int)
+
+		resultData := <-uc.repo.GetUserData(params)
+		if resultData.Error != nil {
+			output <- model.Result{Error: resultData.Error}
+			return
+		}
+		paginationTable := pagination.PaginationTable{
+			Page:        params.Page,
+			TotalData:   total,
+			DataPerPage: params.Limit,
+			Data:        resultData.Data,
+		}
+		paginationTable.PaginationTotalPage()
+
+		output <- model.Result{Data: paginationTable}
 	}()
 	return output
 }

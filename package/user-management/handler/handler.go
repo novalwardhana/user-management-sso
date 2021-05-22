@@ -31,15 +31,41 @@ func (h *handler) Mount(group *echo.Group) {
 	group.DELETE("/delete/:id", h.deleteUser, userVerify.Verify())
 }
 
-func (h *handler) getUserData(c echo.Context) error {
-	result := <-h.userManagementUC.GetUserData()
+func (h *handler) getUserData(mc echo.Context) error {
+	c := mc.(*userVerify.RoleContext)
+
+	page := c.QueryParam("page")
+	limit := c.QueryParam("limit")
+	if page == "" || limit == "" {
+		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: "Page and limit not found"})
+	}
+
+	paramPage, err := strconv.Atoi(page)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
+	}
+	paramLimit, err := strconv.Atoi(limit)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: err.Error()})
+	}
+	if paramPage <= 0 || paramLimit <= 0 {
+		return c.JSON(http.StatusBadRequest, model.Response{StatusCode: http.StatusBadRequest, Message: "Page or limit parameter is 0 or less than 0"})
+	}
+	params := model.ListParams{
+		Page:  paramPage,
+		Limit: paramLimit,
+	}
+
+	result := <-h.userManagementUC.GetUserData(params)
 	if result.Error != nil {
 		return c.JSON(http.StatusNotAcceptable, model.Response{StatusCode: http.StatusNotAcceptable, Message: result.Error.Error()})
 	}
 	return c.JSON(http.StatusOK, model.Response{StatusCode: http.StatusOK, Message: "Success get users data", Data: result.Data})
 }
 
-func (h *handler) getUserByID(c echo.Context) error {
+func (h *handler) getUserByID(mc echo.Context) error {
+	c := mc.(*userVerify.RoleContext)
+
 	paramID := c.Param("id")
 	id, err := strconv.Atoi(paramID)
 	if err != nil {
