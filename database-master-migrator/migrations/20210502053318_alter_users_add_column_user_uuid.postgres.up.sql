@@ -1,0 +1,1 @@
+ALTER TABLE public.users ADD user_uuid uuid NULL;
